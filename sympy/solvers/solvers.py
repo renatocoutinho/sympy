@@ -358,6 +358,7 @@ def solve(f, *symbols, **flags):
                 symbols = symbols_new
 
             polys = []
+            denoms = []
 
             for g in f:
 
@@ -366,7 +367,13 @@ def solve(f, *symbols, **flags):
                 if poly is not None:
                     polys.append(poly)
                 else:
-                    raise NotImplementedError()
+                    numer, denom = g.as_numer_denom()
+                    numer_poly = numer.as_poly(*symbols)
+                    if numer_poly is not None:
+                        polys.append(numer_poly)
+                        denoms.append(denom)
+                    else:
+                        raise NotImplementedError()
 
             if all(p.is_linear for p in polys):
                 n, m = len(f), len(symbols)
@@ -384,7 +391,15 @@ def solve(f, *symbols, **flags):
             else:
                 soln = solve_poly_system(polys)
 
-            # Use swap_dict to ensure we return the same type as what was passed
+            # if there were rational functions, check if there were roots
+            # in the denominator
+            if len(denoms) != 0:
+                for s in soln:
+                    if any([ d.subs(zip(symbols, s)) == 0 for d in denoms ]):
+                        soln.remove(s)
+
+            # Use swap_dict to ensure we return the same type as what was
+            # passed
             if symbol_swapped:
                 if isinstance(soln, dict):
                     res = {}

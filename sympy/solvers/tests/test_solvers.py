@@ -349,3 +349,5 @@ def test_solve_inequalities():
     assert solve(system, assume=Q.real(x)) == \
         Or(And(Lt(-sqrt(2), x), Lt(x, -1)), And(Lt(1, x), Lt(x, sqrt(2))))
 
+def test_solve_rational_system():
+    pass
