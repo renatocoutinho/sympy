@@ -7,7 +7,7 @@ from sympy.solvers import solve_linear_system, solve_linear_system_LU,dsolve,\
      tsolve, solve_undetermined_coeffs
 
 from sympy.solvers.solvers import guess_solve_strategy, GS_POLY, GS_POLY_CV_1, GS_POLY_CV_2,\
-    GS_TRANSCENDENTAL, GS_RATIONAL, GS_RATIONAL_CV_1
+    GS_TRANSCENDENTAL, GS_RATIONAL, GS_RATIONAL_CV_1, solve_backsub
 
 from sympy.utilities.pytest import XFAIL, raises
 
@@ -350,4 +350,10 @@ def test_solve_inequalities():
         Or(And(Lt(-sqrt(2), x), Lt(x, -1)), And(Lt(1, x), Lt(x, sqrt(2))))
 
 def test_solve_rational_system():
-    pass
+    x, y = symbols('x, y')
+
+    assert solve([(x+1)/(x-1)], x) == [(-1,)]
+    assert solve([(x**2-1)/(x-1)], x) == [(-1,)]
+    assert solve([(x-1)/(x+1) - y, y+x], x, y) == [(-S(2)**Rational(1, 2) - 1,
+        1 + S(2)**Rational(1, 2)), (-1 + S(2)**Rational(1, 2),
+            -S(2)**Rational(1, 2) + 1)]

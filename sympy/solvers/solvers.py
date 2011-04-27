@@ -14,7 +14,7 @@
 """
 
 from sympy.core.sympify import sympify
-from sympy.core import S, Mul, Add, Pow, Symbol, Wild, Equality, Dummy
+from sympy.core import S, Mul, Add, Pow, Symbol, Wild, Equality, Dummy, Function
 from sympy.core.numbers import ilcm
 
 from sympy.functions import log, exp, LambertW
@@ -373,7 +373,7 @@ def solve(f, *symbols, **flags):
                         polys.append(numer_poly)
                         denoms.append(denom)
                     else:
-                        raise NotImplementedError()
+                        return solve_transcendental_system(f, *symbols)
 
             if all(p.is_linear for p in polys):
                 n, m = len(f), len(symbols)
@@ -391,11 +391,13 @@ def solve(f, *symbols, **flags):
             else:
                 soln = solve_poly_system(polys)
 
-            # if there were rational functions, check if there were roots
+            # if there are rational functions, check if there are roots
             # in the denominator
             if len(denoms) != 0:
+                if type(soln) is dict:
+                    soln = [ tuple(soln[s] for s in symbols) ]
                 for s in soln:
-                    if any([ d.subs(zip(symbols, s)) == 0 for d in denoms ]):
+                    if any([ simplify(d.subs(zip(symbols, s))) == 0 for d in denoms ]):
                         soln.remove(s)
 
             # Use swap_dict to ensure we return the same type as what was
@@ -414,6 +416,52 @@ def solve(f, *symbols, **flags):
                     return soln
             else:
                 return soln
+
+def solve_backsub(f, *symbols):
+    fvars = [ [ symb for symb in symbols if equ.has(symb) ] for equ in f ]
+
+    for i, fvar in enumerate(fvars):
+        if len(fvar) == 0:
+            del fvars[i]
+            del f[i]
+
+    free = list(symbols)
+    funused = f
+    sols1 = {}
+    for i, fvar in enumerate(fvars):
+        if len(fvar) == 1:
+            sol1 = solve(f[i], fvar[0])
+            if len(sol1) == 0:
+                return []
+            sols1[fvar[0]] = sol1
+            free.remove(fvar[0])
+            del fvars[i]
+            del funused[i]
+
+    if len(sols1) == 0:
+        raise NotImplementedError()
+
+    if len(free) == 0:
+        ordsols = sorted(sols1.items(), key=lambda i: symbols.index(i[0]))
+        return list(itertools.product(*[ s[1] for s in ordsols ]))
+
+    solved = sols1.keys()
+    solutions = []
+    for sol in itertools.product(*sols1.values()):
+        fnew = [ fu.subs(zip(solved, sol)) for fu in funused ]
+        try:
+            soln = solve_backsub(fnew, *free)
+        except NotImplementedError:
+            continue
+        if len(soln) > 0:
+            for s in soln:
+                solutions.append(sol + s)
+
+    ordsols = [ sorted(
+        zip(sols1.keys() + free, s), 
+        key=lambda i: symbols.index(i[0])
+        ) for s in solutions ]
+    return ordsols
 
 def solve_linear(lhs, rhs=0, x=[], exclude=[]):
     """ Return a tuple containing derived from f = lhs - rhs that is either:
@@ -676,6 +724,40 @@ def solve_linear_system_LU(matrix, syms):
     solutions = {}
     for i in range(soln.rows):
         solutions[syms[i]] = soln[i,0]
+    return solutions
+
+def solve_transcendental_system(f, *symbols):
+    funcs = set([])
+    for equ in f:
+        funcs |= equ.atoms(Function)
+    for func in funcs:
+        if not any([ func.has(symb) for symb in symbols ]):
+            funcs.remove(func)
+        elif len(func.args) > 1:
+            raise NotImplementedError("Unable to solve equations " + \
+                "containing functions of more than one variable")
+
+    F = [ Dummy('F%d' % i) for i in range(len(funcs)) ]
+    swap = dict(zip(funcs, F))
+
+    fswapped = [ equ.subs(swap) for equ in f ]
+
+    solp = solve(fswapped, *symbols)
+
+    if type(solp) is dict:
+        solp = [ tuple(solp[s] for s in symbols) ]
+
+    solutions = []
+    for s in solp:
+        subsol = dict(zip(symbols, s))
+        enew = [ equ.subs(subsol) for equ in f ]
+        for fs in F:
+            if not any([ equ.has(fs) for equ in enew ]):
+                F.remove(fs)
+        solbs = solve_backsub(enew, *F)
+        for sb in solbs:
+            solutions.append(tuple(si.subs(zip(F, sb)) for si in s))
+
     return solutions
 
 x = Dummy('x')
