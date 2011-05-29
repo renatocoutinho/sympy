@@ -357,3 +357,9 @@ def test_solve_rational_system():
     assert solve([(x-1)/(x+1) - y, y+x], x, y) == [(-S(2)**Rational(1, 2) - 1,
         1 + S(2)**Rational(1, 2)), (-1 + S(2)**Rational(1, 2),
             -S(2)**Rational(1, 2) + 1)]
+
+def test_solve_transcendental_system():
+    x, y, z = symbols('x, y, z')
+
+    assert solve([x + sin(y), x - sin(y)], x, y) == [(0, 0)]
+    assert solve([x + y + 2, exp(x-y)], x, y) == [(1, 1)]
