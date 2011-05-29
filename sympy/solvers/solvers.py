@@ -681,62 +681,10 @@ def solve_linear_system_LU(matrix, syms):
     return solutions
 
 def solve_transcendental_system(f, *symbols):
-    funcs = dict([ (s, set([])) for s in symbols ])
-    for equ in f:
-        for func in equ.atoms(Function):
-            for s in symbols:
-                if func.has(s):
-                    funcs[s].add(func)
-
-    swap = {}
-    new_symbols = list(symbols)
-    swap_symbols = {}
-    for s in symbols:
-        dum = [ Dummy() for _ in xrange(len(funcs[s])) ]
-        swap_s = dict(zip(funcs[s], dum))
-        fswapped = [ equ.subs(swap) for equ in f ]
-        swap.update(swap_s)
-
-        if any([ equ.has(x) for equ in fswapped ]):
-            continue
-
-        # symbol only appears inside function(s), so we solve for the function
-        if len(funcs[s]) == 1:
-            func = funcs[s].pop()
-            new_symbols.remove(s)
-            new_symbols.append(swap_s[func])
-            swap_symbols[s] = swap_s[func]
-            del swap[func]
-            continue
-        funcsubs = None
-        for func in funcs[s]:
-            try:
-                #TODO: what if there are several solutions?
-                inv_func = solve(func - swap[func], s)[0]
-            except NotImplementedError, IndexError:
-                continue
-            funcsubs = func
-            break
-
-        if not funcsubs:
-            # nothing to be done: function not invertible can't be solved
-            # for anyway
-            raise NotImplementedError("Unable to solve the system of "
-                "equations: functions %s not invertible in variable %s",
-                (funcs[s], s))
-        new_symbols.remove(s)
-        new_symbols.append(swap_s[funcsubs])
-        swap_symbols[s] = inv_func
-        del swap[swap_s[funcsubs]]
-        for func in funcs[s] and func != funcsubs:
-            #TODO: this should allow rational too
-            new_func = func.subs(s, inv_func).as_poly(s)
-            if new_func:
-                del swap[func]
+    fswapped, new_symbols, swap, swap_symbols = _replace_funcs(f, *symbols)
 
     backswap = dict([ reversed(i) for i in swap.items() ])
     backswap_symbols = dict([ reversed(i) for i in swap_symbols.items() ])
-    fswapped = [ equ.subs(swap).subs(swap_symbols) for equ in f ]
 
     # this should be polys or rational at least
     #TODO: if it raises, let it raise or catch & re-raise?
@@ -761,6 +709,71 @@ def solve_transcendental_system(f, *symbols):
             solutions.append(tuple(si.subs(zip(F, sb)) for si in s))
 
     return solutions
+
+def _replace_funcs(f, *symbols):
+    funcs = dict([ (s, set([])) for s in symbols ])
+    for equ in f:
+        for func in equ.atoms(Function):
+            for s in symbols:
+                if func.has(s):
+                    funcs[s].add(func)
+
+    swap = {}
+    new_symbols = list(symbols)
+    swap_symbols = {}
+    for s in symbols:
+        if not funcs[s]:
+            continue
+        dum = [ Dummy() for _ in xrange(len(funcs[s])) ]
+        swap_s = dict(zip(funcs[s], dum))
+        fswapped = [ equ.subs(swap) for equ in f ]
+        swap.update(swap_s)
+
+        if any([ equ.has(x) for equ in fswapped ]):
+            continue
+
+        # symbol only appears inside function(s), so we solve for the function
+        if len(funcs[s]) == 1:
+            func = funcs[s].pop()
+            try:
+                #TODO: what if there are several solutions?
+                inv_func = solve(func - swap[func], s)[0]
+            except NotImplementedError, IndexError:
+                raise NotImplementedError("Unable to solve the system of "
+                "equations: function %s not invertible in variable %s" %
+                (func, s))
+            new_symbols.remove(s)
+            new_symbols.append(swap_s[func])
+            swap_symbols[s] = inv_func
+            continue
+        funcsubs = None
+        for func in funcs[s]:
+            try:
+                #TODO: what if there are several solutions?
+                inv_func = solve(func - swap[func], s)[0]
+            except NotImplementedError, IndexError:
+                continue
+            funcsubs = func
+            break
+
+        if not funcsubs:
+            # nothing to be done: function not invertible can't be solved
+            # for anyway
+            raise NotImplementedError("Unable to solve the system of "
+                "equations: functions %s not invertible in variable %s" %
+                (funcs[s], s))
+        new_symbols.remove(s)
+        new_symbols.append(swap_s[funcsubs])
+        swap_symbols[s] = inv_func
+        for func in funcs[s]:
+            if func != funcsubs:
+                #TODO: this should allow rational too
+                new_func = func.subs(s, inv_func).as_poly(swap[funcsubs])
+                if new_func:
+                    del swap[func]
+
+    fswapped = [ equ.subs(swap).subs(swap_symbols) for equ in f ]
+    return (fswapped, new_symbols, swap, swap_symbols)
 
 def solve_backsub(f, *symbols):
     fvars = [ [ symb for symb in symbols if equ.has(symb) ] for equ in f ]
