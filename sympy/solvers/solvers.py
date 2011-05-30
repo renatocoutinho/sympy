@@ -18,7 +18,7 @@ from sympy.core import S, Mul, Add, Pow, Symbol, Wild, Equality, Dummy, Function
 from sympy.core.numbers import ilcm
 
 from sympy.functions import log, exp, LambertW
-from sympy.simplify import simplify, collect
+from sympy.simplify import simplify, collect, separatevars
 from sympy.matrices import Matrix, zeros
 from sympy.polys import roots, cancel
 from sympy.functions.elementary.piecewise import piecewise_fold
@@ -713,7 +713,7 @@ def solve_transcendental_system(f, *symbols):
 def _replace_funcs(f, *symbols):
     funcs = dict([ (s, set([])) for s in symbols ])
     for equ in f:
-        for func in equ.atoms(Function):
+        for func in separatevars(equ.expand(trig=True, func=True)).atoms(Function):
             for s in symbols:
                 if func.has(s):
                     funcs[s].add(func)
