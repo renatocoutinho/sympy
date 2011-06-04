@@ -148,6 +148,30 @@ class Integral(Expr):
     def __getnewargs__(self):
         return (self.function,) + tuple([tuple(xab) for xab in self.limits])
 
+    def __eq__(self, other):
+        if not isinstance(other, Integral):
+            return False
+        selflimits = [ L[1:] for L in self.limits ]
+        otherlimits = [ L[1:] for L in other.limits ]
+        if not (self.free_symbols == other.free_symbols and
+                selflimits == otherlimits):
+            return False
+
+        other_d = other.as_dummy()
+        return self.args[0] == other_d.args[0].subs(
+                zip(other_d.variables, self.variables))
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return super(Integral, self).__hash__()
+
+    def _hashable_content(self):
+        limits = [ L[1:] for L in self.limits ]
+        return tuple(limits + sorted(self.free_symbols))
+
+
     @property
     def function(self):
         """Return the function to be integrated.

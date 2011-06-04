@@ -88,6 +88,19 @@ def test_basics():
     n = Symbol('n', commutative=False)
     assert Integral(n + x, x).is_commutative is False
 
+def test_issue_2440():
+    # issue 2440
+    assert Integral(f(x), (x, 0, 1)) == Integral(f(y), (y, 0, 1))
+    assert Integral(f(x), (x, 0, 1)) + Integral(f(y), (y, 0, 1)) == \
+            2*Integral(f(x), (x, 0, 1))
+    assert Integral(f(x, y), (x, 0, 1), (y, -n, n)) == \
+            Integral(f(a, t), (a, 0, 1), (t, -n, n))
+    assert Integral(x*y**2, (x, 0, 1), (y, 0, 2)) == \
+            Integral(y*x**2, (y, 0, 1), (x, 0, 2))
+    assert Integral(x*y**2, (x, 0, 1), (y, 0, 2)) != \
+            Integral(y*x**2, (x, 0, 2), (y, 0, 1))
+    assert Integral(f(x, y), x) != Integral(f(x, y), y)
+    assert Integral(f(x, y), x) != Integral(f(x, y), y)
 
 def test_basics_multiple():
 
