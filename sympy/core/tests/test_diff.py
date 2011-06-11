@@ -98,3 +98,20 @@ def test_deriv_noncommutative():
     x = Symbol("x")
     assert A*f(x)*A == f(x)*A**2
     assert A*f(x).diff(x)*A == f(x).diff(x) * A**2
+
+def test_diff_subs_diff():
+    # issue 1654
+    x = Symbol('x')
+    y = Symbol('y')
+    z = Symbol('z')
+    f = Function('f')
+    g = Function('g')
+
+    assert diff(f(x, y, z), x, y, z).subs(diff(f(x, y, z), x, y), g(z)) == \
+            Derivative(g(z), z)
+    assert diff(f(x, y, z), x, y, z).subs(diff(f(x, y, z), x, z), g(y)) == \
+            Derivative(g(y), y)
+    assert Derivative(f(x, y, z), y, x, z).subs(Derivative(f(x, y, z), x, z),
+            g(y)) == Derivative(f(x, y, z), y, x, z)
+    assert Derivative(f(x, y, z), y, x, z).subs(Derivative(f(x, y, z), y, x),
+            g(z)) == Derivative(g(z), z)

@@ -1119,7 +1119,35 @@ class Derivative(Expr):
         if old in self.variables and not new.is_Symbol:
             # Issue 1620
             return Subs(self, old, new)
+        if (isinstance(old, Derivative) and self.expr == old.expr
+                and len(self.variables) >= len(old.variables)):
+            selfvars = list(self.variables)
+            oldvars = list(old.variables)
+            if (sorted(selfvars, key=default_sort_key) == selfvars
+                    and sorted(oldvars, key=default_sort_key) == oldvars):
+                selfc = dict([ (x, selfvars.count(x)) for x in set(selfvars) ])
+                oldc = dict([ (x, oldvars.count(x)) for x in set(oldvars) ])
+                for var, count in oldc.iteritems():
+                    if not (var in selfc and selfc[var] >= count):
+                        break
+                    selfc[var] -= count
+                    oldc[var] = 0
+                if not any(oldc.values()):
+                    newvars = [ var for _ in range(count) for var,
+                            count in selfc.iteritems() if count > 0 ]
+                    return Derivative(new, *newvars, **{'evaluate': True})
+            elif self.variables[:len(old.variables)] == old.variables:
+                return Derivative(new, *self.variables[len(old.variables):])
+
         return Derivative(*map(lambda x: x._subs(old, new), self.args))
+
+    def matches(self, expr, repl_dict={}, evaluate=False):
+        if self in repl_dict:
+            if repl_dict[self] == expr:
+                return repl_dict
+        elif isinstance(expr, Derivative):
+            if len(expr.variables) == len(self.variables):
+                return Expr.matches(self, expr, repl_dict, evaluate)
 
     def _eval_lseries(self, x):
         dx = self.args[1:]
