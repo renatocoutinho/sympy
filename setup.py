@@ -31,9 +31,6 @@ from distutils.core import setup
 from distutils.core import Command
 import sys
 
-import sympy
-from sympy.utilities.runtests import test, doctest
-
 # Make sure I have the right Python version.
 if sys.version_info[:2] < (2,4):
     print "Sympy requires Python 2.4 or newer. Python %d.%d detected" % \
@@ -134,17 +131,28 @@ class clean(Command):
 
     def run(self):
         import os
-        os.system("py.cleanup")
+        #os.system("py.cleanup")
         os.system("rm -f python-build-stamp-2.4")
         os.system("rm -f MANIFEST")
         os.system("rm -rf build")
         os.system("rm -rf dist")
         os.system("rm -rf doc/_build")
+        self.cleanup()
 
+    def cleanup(self):
+        import os
+        import fnmatch
+        excludedirs = ['.tox', 'tags', '.coverage', 'covhtml', 'my', 'doc']
+        for root, dirnames, filenames in os.walk('.'):
+            if not any([ fnmatch.fnmatch(root,
+                './%s/*' % exc) for exc in excludedirs ]):
+                for filename in fnmatch.filter(filenames, '*.pyc'):
+                    os.remove(os.path.join(root, filename))
 
 class test_sympy(Command):
     """Runs all tests under the sympy/ folder
     """
+    from sympy.utilities.runtests import test, doctest
 
     description = "run all tests and doctests; also see bin/test and bin/doctest"
     user_options = []  # distutils complains if this is not here.
@@ -254,7 +262,7 @@ pyglet_packages = ["sympy.thirdparty.pyglet." + s for s in pyglet_packages]
 
 setup(
       name = 'sympy',
-      version = sympy.__version__,
+      version = '0.6.7-git',
       description = 'Computer algebra system (CAS) in Python',
       author = 'SymPy development team',
       author_email = 'sympy@googlegroups.com',
