@@ -483,19 +483,20 @@ class Function(Application, Expr):
             s = s.removeO()
             s = s.subs(v, zi).expand() + C.Order(o.expr.subs(v, zi), x)
             return s
-        if (self.nargs == 1 and args0[0]) or self.nargs > 1:
-            e = self
-            e1 = e.expand()
-            if e == e1:
-                #for example when e = sin(x+1) or e = sin(cos(x))
-                #let's try the general algorithm
-                term = e.subs(x, S.Zero)
-                if term.is_bounded is False or term is S.NaN:
-                    raise PoleError("Cannot expand %s around 0" % (self))
-                series = term
+
+        e = self
+        e1 = e.expand()
+        if e == e1:
+            #for example when e = sin(x+1) or e = sin(cos(x))
+            #let's try the general algorithm
+            subs = e.subs(x, S.Zero)
+            if subs is S.NaN:
+                subs = e.limit(x, S.Zero)
+            if subs.is_bounded is True:
+                series = subs
                 fact = S.One
-                for i in range(n - 1):
-                    i += 1
+                for i in range(1, n):
+                    term = None
                     fact *= Rational(i)
                     e = e.diff(x)
                     subs = e.subs(x, S.Zero)
@@ -503,12 +504,18 @@ class Function(Application, Expr):
                         # try to evaluate a limit if we have to
                         subs = e.limit(x, S.Zero)
                     if subs.is_bounded is False:
-                        raise PoleError("Cannot expand %s around 0" % (self))
+                        break
                     term = subs*(x**i)/fact
                     term = term.expand()
                     series += term
-                return series + C.Order(x**n, x)
-            return e1.nseries(x, n=n, logx=logx)
+                if i == n-1 and term is not None:
+                    return series + C.Order(x**n, x)
+        try:
+            series = e1.nseries(x, n=n, logx=logx)
+        except PoleError:
+            pass
+        else:
+            return series
         arg = self.args[0]
         l = []
         g = None
