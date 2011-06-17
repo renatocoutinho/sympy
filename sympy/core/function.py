@@ -483,7 +483,7 @@ class Function(Application, Expr):
             s = s.removeO()
             s = s.subs(v, zi).expand() + C.Order(o.expr.subs(v, zi), x)
             return s
-        if (self.func.nargs == 1 and args0[0]) or self.func.nargs > 1:
+        if (self.nargs == 1 and args0[0]) or self.nargs > 1:
             e = self
             e1 = e.expand()
             if e == e1:

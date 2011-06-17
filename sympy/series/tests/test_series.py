@@ -63,7 +63,9 @@ def test_2124():
     assert ((sin(x))**y).nseries(x, n=1, logx=logx) == \
         exp(y*logx) + O(x*exp(y*logx), x)
 
-    raises(NotImplementedError, lambda: series(Function("f")(x)))
+    f = Function('f')
+    assert f(x).series(x, n=3) == f(0) + x * f(x).diff(x).subs(x, 0) \
+            + x**2 * f(x).diff(x, 2).subs(x, 0)/2 + O(x**3)
 
     assert sin(1/x).series(x, oo, n=5) == 1/x - 1/(6*x**3)
     assert abs(x).series(x, oo, n=5, dir='+') == x
