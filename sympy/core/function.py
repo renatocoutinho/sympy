@@ -640,6 +640,12 @@ class Derivative(Expr):
                     count = int(count)
                     i += 2
 
+            elif isinstance(s, Tuple):
+                if s[0].is_Symbol and (s[1].is_integer):
+                    count = s[1]
+                    s = s[0]
+                    i += 1
+
             if i == iwas: # didn't get an update because of bad input
                 raise ValueError('Derivative expects Symbol [, Integer] args but got %s, %s' % (s, count))
 
