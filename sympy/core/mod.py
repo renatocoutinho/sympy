@@ -1,8 +1,7 @@
-from cache import cacheit
 from expr import Expr
 from sympify import sympify
 
-class Mod(Expr):
+class Mod(Function):
     '''Represents a modulo operation on symbolic expressions.
 
     Receives two arguments, dividend and divisor. If both are Numbers, the
@@ -19,12 +18,12 @@ class Mod(Expr):
     1
 
     '''
-    @cacheit
-    def __new__(cls, *args, **options):
-        if len(args) != 2:
-            raise TypeError("Mod receives two arguments, only %s passed" %
-                    len(args))
-        dividend, divisor = map(sympify, args)
+
+    nargs = 2
+
+    @classmethod
+    def eval(cls, dividend, divisor):
+        dividend, divisor = sympify(dividend, divisor)
         if dividend.is_Number and divisor.is_Number:
             return dividend % divisor
         return Expr.__new__(cls, *args)
